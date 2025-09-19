@@ -1,23 +1,57 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: Lark Webhook Notifier
+description:
+  Send customizable Lark messages/cards via Incoming Webhook with JSON
+  templating and variable interpolation.
+author: ionext
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
   icon: heart
   color: red
 
-# Define your inputs here.
+# Define inputs for webhook and templating
 inputs:
-  milliseconds:
-    description: Your input description here
+  webhook_url:
+    description: Lark Incoming Webhook URL
     required: true
-    default: '1000'
+  message_template:
+    description: >-
+      JSON template of the message/card to send. Use {{var}} placeholders for
+      variables. Example: {"msg_type":"text","content":{"text":"Hello
+      {{name}}"}}
+    required: true
+  variables:
+    description: >-
+      Variables to interpolate into the template. Accepts JSON object or newline
+      separated key=value lines. Example: '{"name":"World"}' or "name=World".
+    required: false
+  request_timeout_ms:
+    description: HTTP request timeout in milliseconds
+    required: false
+    default: '10000'
+  dry_run:
+    description:
+      If true, don't send the webhook; just print the interpolated JSON
+    required: false
+    default: 'false'
+  fail_on_http_error:
+    description: If true, mark the step failed when the HTTP response is not 2xx
+    required: false
+    default: 'true'
+  webhook_secret:
+    description:
+      Optional secret for Lark webhook signature verification. If provided, the
+      action will add timestamp and sign fields to the request body.
+    required: false
 
-# Define your outputs here.
+# Define outputs
 outputs:
-  time:
-    description: Your output description here
+  ok:
+    description: Whether the HTTP response status is 2xx
+  status:
+    description: HTTP status code from the webhook
+  response_text:
+    description: Raw response body text from the webhook
 
 runs:
   using: node24

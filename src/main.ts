@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import { wait } from './wait.js'
+import { buildBodyFromTemplate, sendLarkWebhook } from './lark.js'
 
 /**
  * The main function for the action.
@@ -8,18 +8,47 @@ import { wait } from './wait.js'
  */
 export async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
+    const webhookUrl = core.getInput('webhook_url', { required: true })
+    const webhookSecret = core.getInput('webhook_secret')
+    const template = core.getInput('message_template', { required: true })
+    const variablesInput = core.getInput('variables')
+    const dryRun = core.getBooleanInput('dry_run')
+    const timeoutMsInput = core.getInput('request_timeout_ms')
+    const failOnHttpError = core.getBooleanInput('fail_on_http_error')
 
-    // Debug logs are only output if the `ACTIONS_STEP_DEBUG` secret is true
-    core.debug(`Waiting ${ms} milliseconds ...`)
+    const timeoutMs = timeoutMsInput ? parseInt(timeoutMsInput, 10) : undefined
 
-    // Log the current timestamp, wait, then log the new timestamp
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    core.debug('Building Lark message body from template and variables')
+    const { body, interpolated } = buildBodyFromTemplate(
+      template,
+      variablesInput
+    )
 
-    // Set outputs for other workflow steps to use
-    core.setOutput('time', new Date().toTimeString())
+    if (dryRun) {
+      core.info('[dry_run] Skipping webhook call. Interpolated JSON:')
+      core.info(interpolated)
+      core.setOutput('ok', true)
+      core.setOutput('status', 0)
+      core.setOutput('response_text', 'dry_run')
+      return
+    }
+
+    core.debug('Sending Lark webhook request')
+    const res = await sendLarkWebhook(webhookUrl, webhookSecret, body, {
+      timeoutMs
+    })
+    const text = await res.text()
+    const ok = res.ok
+    const status = res.status
+
+    // Expose outputs
+    core.setOutput('ok', ok)
+    core.setOutput('status', status)
+    core.setOutput('response_text', text)
+
+    if (!ok && failOnHttpError) {
+      core.setFailed(`Lark webhook failed with status ${status}: ${text}`)
+    }
   } catch (error) {
     // Fail the workflow run if an error occurs
     if (error instanceof Error) core.setFailed(error.message)
