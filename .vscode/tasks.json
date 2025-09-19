@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run tests and bundle",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "all"],
+      "problemMatcher": ["$tsc", "$eslint-stylish"],
+      "group": "build"
+    }
+  ]
+}
